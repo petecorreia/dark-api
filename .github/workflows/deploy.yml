@@ -7,7 +7,7 @@ on:
 
 env:
   GCP_SERVICE_NAME: dark-api
-  GCP_PROJECT: dark-api
+  GCP_PROJECT: dark-api-294815
   GCP_SA_KEY: ${{ secrets.GCP_SA_KEY }}
   GCP_REGION: europe-west2
 
