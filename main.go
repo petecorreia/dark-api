@@ -9,6 +9,7 @@ import (
 	"github.com/99designs/gqlgen/graphql/handler"
 	"github.com/99designs/gqlgen/graphql/playground"
 	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v4/middleware"
 	"github.com/petecorreia/dark-api/character"
 	"github.com/petecorreia/dark-api/graphql"
 	"github.com/petecorreia/dark-api/graphql/generated"
@@ -66,7 +67,9 @@ func main() {
 		return nil
 	})
 
+	// Options
 	e.HideBanner = true
+	e.Use(middleware.CORS())
 
 	e.Logger.Fatal(e.Start(fmt.Sprintf(":%s", port)))
 }
