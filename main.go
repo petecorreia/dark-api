@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"net/http"
 	"os"
 
@@ -47,9 +48,10 @@ func CharacterHandler(c echo.Context) error {
 }
 
 func main() {
-	port, exists := os.LookupEnv("PORT")
-	if !exists {
-		port = "8000"
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080"
+		log.Printf("defaulting to port %s", port)
 	}
 
 	e := echo.New()
@@ -58,6 +60,8 @@ func main() {
 
 	e.GET("/characters", CharactersHandler)
 	e.GET("/characters/:id", CharacterHandler)
+
+	e.HideBanner = true
 
 	e.Logger.Fatal(e.Start(fmt.Sprintf(":%s", port)))
 }
