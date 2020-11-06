@@ -1,4 +1,4 @@
-package characters
+package character
 
 import "errors"
 
@@ -13,5 +13,5 @@ func GetById(id string) (*Character, error) {
 		}
 	}
 
-	return nil, errors.New("asd")
+	return nil, errors.New("character not found")
 }

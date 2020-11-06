@@ -9,9 +9,10 @@ import (
 	"github.com/99designs/gqlgen/graphql/handler"
 	"github.com/99designs/gqlgen/graphql/playground"
 	"github.com/labstack/echo/v4"
-	"github.com/petecorreia/dark-api/characters"
+	"github.com/petecorreia/dark-api/character"
 	"github.com/petecorreia/dark-api/graphql"
 	"github.com/petecorreia/dark-api/graphql/generated"
+	"github.com/petecorreia/dark-api/world"
 )
 
 // IndexHandler handles the index route and displays a helpful list of the
@@ -23,7 +24,10 @@ func IndexHandler(c echo.Context) error {
 	GET  /graphql            GraphQL playground
 
 	GET  /characters         Get all characters
-	GET  /characters/:id     Get a specific character by ID`
+	GET  /characters/:id     Get a specific character by ID
+
+	GET  /worlds             Get all worlds
+	GET  /worlds/:id         Get a specific world by ID`
 
 	return c.String(http.StatusOK, info)
 }
@@ -41,8 +45,10 @@ func main() {
 
 	// REST
 
-	e.GET("/characters", characters.CharactersHandler)
-	e.GET("/characters/:id", characters.CharacterHandler)
+	e.GET("/characters", character.CharactersHandler)
+	e.GET("/characters/:id", character.CharacterHandler)
+	e.GET("/worlds", world.WorldsHandler)
+	e.GET("/worlds/:id", world.WorldHandler)
 
 	// GraphQL
 

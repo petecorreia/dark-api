@@ -32,6 +32,8 @@ models:
       - github.com/99designs/gqlgen/graphql.Int32
   Character:
     fields:
+      worlds:
+        resolver: true
       alternates:
         resolver: true
       parents:
@@ -39,4 +41,8 @@ models:
       children:
         resolver: true
       relationships:
+        resolver: true
+  World:
+    fields:
+      characters:
         resolver: true

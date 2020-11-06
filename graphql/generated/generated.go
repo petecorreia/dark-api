@@ -37,6 +37,7 @@ type Config struct {
 type ResolverRoot interface {
 	Character() CharacterResolver
 	Query() QueryResolver
+	World() WorldResolver
 }
 
 type DirectiveRoot struct {
@@ -57,10 +58,20 @@ type ComplexityRoot struct {
 	Query struct {
 		Character  func(childComplexity int, id string) int
 		Characters func(childComplexity int) int
+		World      func(childComplexity int, id string) int
+		Worlds     func(childComplexity int) int
+	}
+
+	World struct {
+		Characters func(childComplexity int) int
+		ID         func(childComplexity int) int
+		Name       func(childComplexity int) int
 	}
 }
 
 type CharacterResolver interface {
+	Worlds(ctx context.Context, obj *model.Character) ([]*model.World, error)
+
 	Alternates(ctx context.Context, obj *model.Character) ([]*model.Character, error)
 	Parents(ctx context.Context, obj *model.Character) ([]*model.Character, error)
 	Children(ctx context.Context, obj *model.Character) ([]*model.Character, error)
@@ -69,6 +80,11 @@ type CharacterResolver interface {
 type QueryResolver interface {
 	Characters(ctx context.Context) ([]*model.Character, error)
 	Character(ctx context.Context, id string) (*model.Character, error)
+	Worlds(ctx context.Context) ([]*model.World, error)
+	World(ctx context.Context, id string) (*model.World, error)
+}
+type WorldResolver interface {
+	Characters(ctx context.Context, obj *model.World) ([]*model.Character, error)
 }
 
 type executableSchema struct {
@@ -161,6 +177,46 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Query.Characters(childComplexity), true
 
+	case "Query.world":
+		if e.complexity.Query.World == nil {
+			break
+		}
+
+		args, err := ec.field_Query_world_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.World(childComplexity, args["id"].(string)), true
+
+	case "Query.worlds":
+		if e.complexity.Query.Worlds == nil {
+			break
+		}
+
+		return e.complexity.Query.Worlds(childComplexity), true
+
+	case "World.characters":
+		if e.complexity.World.Characters == nil {
+			break
+		}
+
+		return e.complexity.World.Characters(childComplexity), true
+
+	case "World.id":
+		if e.complexity.World.ID == nil {
+			break
+		}
+
+		return e.complexity.World.ID(childComplexity), true
+
+	case "World.name":
+		if e.complexity.World.Name == nil {
+			break
+		}
+
+		return e.complexity.World.Name(childComplexity), true
+
 	}
 	return 0, false
 }
@@ -214,7 +270,7 @@ var sources = []*ast.Source{
 	{Name: "graphql/schema.graphqls", Input: `type Character {
 	id: ID!
 	name: String!
-	worlds: [String!]!
+	worlds: [World!]!
 	aliases: [String!]!
 	alternates: [Character!]!
 	parents: [Character!]!
@@ -222,9 +278,17 @@ var sources = []*ast.Source{
 	relationships: [Character!]!
 }
 
+type World {
+	id: ID!
+	name: String!
+	characters: [Character!]!
+}
+
 type Query {
 	characters: [Character!]!
 	character(id: ID!): Character!
+	worlds: [World!]!
+	world(id: ID!): World!
 }
 `, BuiltIn: false},
 }
@@ -250,6 +314,21 @@ func (ec *executionContext) field_Query___type_args(ctx context.Context, rawArgs
 }
 
 func (ec *executionContext) field_Query_character_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 string
+	if tmp, ok := rawArgs["id"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
+		arg0, err = ec.unmarshalNID2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["id"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_world_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
 	var arg0 string
@@ -383,14 +462,14 @@ func (ec *executionContext) _Character_worlds(ctx context.Context, field graphql
 		Object:     "Character",
 		Field:      field,
 		Args:       nil,
-		IsMethod:   false,
-		IsResolver: false,
+		IsMethod:   true,
+		IsResolver: true,
 	}
 
 	ctx = graphql.WithFieldContext(ctx, fc)
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.Worlds, nil
+		return ec.resolvers.Character().Worlds(rctx, obj)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -402,9 +481,9 @@ func (ec *executionContext) _Character_worlds(ctx context.Context, field graphql
 		}
 		return graphql.Null
 	}
-	res := resTmp.([]string)
+	res := resTmp.([]*model.World)
 	fc.Result = res
-	return ec.marshalNString2ᚕstringᚄ(ctx, field.Selections, res)
+	return ec.marshalNWorld2ᚕᚖgithubᚗcomᚋpetecorreiaᚋdarkᚑapiᚋgraphqlᚋmodelᚐWorldᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Character_aliases(ctx context.Context, field graphql.CollectedField, obj *model.Character) (ret graphql.Marshaler) {
@@ -659,6 +738,83 @@ func (ec *executionContext) _Query_character(ctx context.Context, field graphql.
 	return ec.marshalNCharacter2ᚖgithubᚗcomᚋpetecorreiaᚋdarkᚑapiᚋgraphqlᚋmodelᚐCharacter(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _Query_worlds(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   true,
+		IsResolver: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().Worlds(rctx)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*model.World)
+	fc.Result = res
+	return ec.marshalNWorld2ᚕᚖgithubᚗcomᚋpetecorreiaᚋdarkᚑapiᚋgraphqlᚋmodelᚐWorldᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Query_world(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   true,
+		IsResolver: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_Query_world_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	fc.Args = args
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().World(rctx, args["id"].(string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.World)
+	fc.Result = res
+	return ec.marshalNWorld2ᚖgithubᚗcomᚋpetecorreiaᚋdarkᚑapiᚋgraphqlᚋmodelᚐWorld(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _Query___type(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -728,6 +884,111 @@ func (ec *executionContext) _Query___schema(ctx context.Context, field graphql.C
 	res := resTmp.(*introspection.Schema)
 	fc.Result = res
 	return ec.marshalO__Schema2ᚖgithubᚗcomᚋ99designsᚋgqlgenᚋgraphqlᚋintrospectionᚐSchema(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _World_id(ctx context.Context, field graphql.CollectedField, obj *model.World) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "World",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ID, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNID2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _World_name(ctx context.Context, field graphql.CollectedField, obj *model.World) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "World",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Name, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _World_characters(ctx context.Context, field graphql.CollectedField, obj *model.World) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "World",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   true,
+		IsResolver: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.World().Characters(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*model.Character)
+	fc.Result = res
+	return ec.marshalNCharacter2ᚕᚖgithubᚗcomᚋpetecorreiaᚋdarkᚑapiᚋgraphqlᚋmodelᚐCharacterᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) ___Directive_name(ctx context.Context, field graphql.CollectedField, obj *introspection.Directive) (ret graphql.Marshaler) {
@@ -1847,10 +2108,19 @@ func (ec *executionContext) _Character(ctx context.Context, sel ast.SelectionSet
 				atomic.AddUint32(&invalids, 1)
 			}
 		case "worlds":
-			out.Values[i] = ec._Character_worlds(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&invalids, 1)
-			}
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Character_worlds(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
+				return res
+			})
 		case "aliases":
 			out.Values[i] = ec._Character_aliases(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -1966,10 +2236,84 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 				}
 				return res
 			})
+		case "worlds":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_worlds(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
+				return res
+			})
+		case "world":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_world(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
+				return res
+			})
 		case "__type":
 			out.Values[i] = ec._Query___type(ctx, field)
 		case "__schema":
 			out.Values[i] = ec._Query___schema(ctx, field)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
+var worldImplementors = []string{"World"}
+
+func (ec *executionContext) _World(ctx context.Context, sel ast.SelectionSet, obj *model.World) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, worldImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("World")
+		case "id":
+			out.Values[i] = ec._World_id(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&invalids, 1)
+			}
+		case "name":
+			out.Values[i] = ec._World_name(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&invalids, 1)
+			}
+		case "characters":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._World_characters(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
+				return res
+			})
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -2350,6 +2694,57 @@ func (ec *executionContext) marshalNString2ᚕstringᚄ(ctx context.Context, sel
 	}
 
 	return ret
+}
+
+func (ec *executionContext) marshalNWorld2githubᚗcomᚋpetecorreiaᚋdarkᚑapiᚋgraphqlᚋmodelᚐWorld(ctx context.Context, sel ast.SelectionSet, v model.World) graphql.Marshaler {
+	return ec._World(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNWorld2ᚕᚖgithubᚗcomᚋpetecorreiaᚋdarkᚑapiᚋgraphqlᚋmodelᚐWorldᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.World) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNWorld2ᚖgithubᚗcomᚋpetecorreiaᚋdarkᚑapiᚋgraphqlᚋmodelᚐWorld(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+	return ret
+}
+
+func (ec *executionContext) marshalNWorld2ᚖgithubᚗcomᚋpetecorreiaᚋdarkᚑapiᚋgraphqlᚋmodelᚐWorld(ctx context.Context, sel ast.SelectionSet, v *model.World) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	return ec._World(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalN__Directive2githubᚗcomᚋ99designsᚋgqlgenᚋgraphqlᚋintrospectionᚐDirective(ctx context.Context, sel ast.SelectionSet, v introspection.Directive) graphql.Marshaler {

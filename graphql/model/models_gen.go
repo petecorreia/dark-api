@@ -5,10 +5,16 @@ package model
 type Character struct {
 	ID            string       `json:"id"`
 	Name          string       `json:"name"`
-	Worlds        []string     `json:"worlds"`
+	Worlds        []*World     `json:"worlds"`
 	Aliases       []string     `json:"aliases"`
 	Alternates    []*Character `json:"alternates"`
 	Parents       []*Character `json:"parents"`
 	Children      []*Character `json:"children"`
 	Relationships []*Character `json:"relationships"`
+}
+
+type World struct {
+	ID         string       `json:"id"`
+	Name       string       `json:"name"`
+	Characters []*Character `json:"characters"`
 }

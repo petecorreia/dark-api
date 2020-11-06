@@ -1,4 +1,4 @@
-package characters
+package character
 
 // Character represents one of the Dark characters
 type Character struct {

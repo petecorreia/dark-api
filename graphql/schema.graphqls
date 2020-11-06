@@ -1,7 +1,7 @@
 type Character {
 	id: ID!
 	name: String!
-	worlds: [String!]!
+	worlds: [World!]!
 	aliases: [String!]!
 	alternates: [Character!]!
 	parents: [Character!]!
@@ -9,7 +9,15 @@ type Character {
 	relationships: [Character!]!
 }
 
+type World {
+	id: ID!
+	name: String!
+	characters: [Character!]!
+}
+
 type Query {
 	characters: [Character!]!
 	character(id: ID!): Character!
+	worlds: [World!]!
+	world(id: ID!): World!
 }
