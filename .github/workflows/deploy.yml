@@ -41,4 +41,5 @@ jobs:
             --image "$TAG" \
             --platform managed \
             --project "$GCP_PROJECT" \
-            --region europe-west2
+            --region europe-west2 \
+            --allow-unauthenticated
