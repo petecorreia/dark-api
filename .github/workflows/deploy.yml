@@ -1,0 +1,44 @@
+name: Deploy
+
+on:
+  push:
+    branches:
+      - master
+
+env:
+  GCP_SERVICE_NAME: dark-api
+  GCP_PROJECT: dark-api
+  GCP_SA_KEY: ${{ secrets.GCP_SA_KEY }}
+  GCP_REGION: europe-west2
+
+jobs:
+  deploy:
+    name: Deploy
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Setup Google Cloud CLI
+        uses: GoogleCloudPlatform/github-actions/setup-gcloud@master
+        with:
+          version: "290.0.1"
+          service_account_key: ${{ env.GCP_SA_KEY }}
+          project_id: ${{ env.GCP_PROJECT }}
+
+      - name: Build and Deploy
+        env:
+          TAG: "gcr.io/${{ env.GCP_PROJECT }}/${{ env.GCP_SERVICE_NAME }}:${{ github.sha }}"
+        run: |
+          gcloud auth configure-docker
+
+          docker build . -t "$TAG"
+
+          docker push "$TAG"
+
+          gcloud run deploy "$GCP_SERVICE_NAME" \
+            --image "$TAG" \
+            --platform managed \
+            --project "$GCP_PROJECT" \
+            --region europe-west2
