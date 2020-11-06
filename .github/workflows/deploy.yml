@@ -3,7 +3,7 @@ name: Deploy
 on:
   push:
     branches:
-      - master
+      - main
 
 env:
   GCP_SERVICE_NAME: dark-api
