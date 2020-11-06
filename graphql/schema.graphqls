@@ -1,0 +1,15 @@
+type Character {
+	id: ID!
+	name: String!
+	worlds: [String!]!
+	aliases: [String!]!
+	alternates: [Character!]!
+	parents: [Character!]!
+	children: [Character!]!
+	relationships: [Character!]!
+}
+
+type Query {
+	characters: [Character!]!
+	character(id: ID!): Character!
+}

@@ -1,6 +1,6 @@
-package main
+package characters
 
-var Characters = []Character{
+var characters = []Character{
 	{
 		ID:            "jonas-kahnwald",
 		Name:          "Jonas Kahnwald",

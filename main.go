@@ -6,55 +6,26 @@ import (
 	"net/http"
 	"os"
 
+	"github.com/99designs/gqlgen/graphql/handler"
+	"github.com/99designs/gqlgen/graphql/playground"
 	"github.com/labstack/echo/v4"
+	"github.com/petecorreia/dark-api/characters"
+	"github.com/petecorreia/dark-api/graphql"
+	"github.com/petecorreia/dark-api/graphql/generated"
 )
-
-// Character represents one of the Dark characters
-type Character struct {
-	ID            string   `json:"id"`
-	Name          string   `json:"name"`
-	Worlds        []string `json:"worlds"`
-	Aliases       []string `json:"aliases"`
-	Alternates    []string `json:"alternates"`
-	Parents       []string `json:"parents"`
-	Children      []string `json:"children"`
-	Relationships []string `json:"relationships"`
-}
 
 // IndexHandler handles the index route and displays a helpful list of the
 // available endpoints
 func IndexHandler(c echo.Context) error {
 	const info = `Dark API
 
-	/characters         gets all characters
-	/characters/:id     get a specific character`
+	POST /graphql            GraphQL API
+	GET  /graphql            GraphQL playground
+
+	GET  /characters         Get all characters
+	GET  /characters/:id     Get a specific character by ID`
 
 	return c.String(http.StatusOK, info)
-}
-
-// CharactersHandler returns all character information
-func CharactersHandler(c echo.Context) error {
-	return c.JSON(http.StatusOK, Characters)
-}
-
-// CharacterHandler returns information about a specific character
-func CharacterHandler(c echo.Context) error {
-	id := c.Param("id")
-
-	var character *Character
-
-	for _, c := range Characters {
-		if c.ID == id {
-			character = &c
-			break
-		}
-	}
-
-	if character == nil {
-		return echo.NewHTTPError(http.StatusNotFound, "Character not found")
-	}
-
-	return c.JSON(http.StatusOK, character)
 }
 
 func main() {
@@ -68,8 +39,26 @@ func main() {
 
 	e.GET("/", IndexHandler)
 
-	e.GET("/characters", CharactersHandler)
-	e.GET("/characters/:id", CharacterHandler)
+	// REST
+
+	e.GET("/characters", characters.CharactersHandler)
+	e.GET("/characters/:id", characters.CharacterHandler)
+
+	// GraphQL
+
+	graphqlHandler := handler.NewDefaultServer(generated.NewExecutableSchema(generated.Config{Resolvers: &graphql.Resolver{}}))
+
+	e.POST("/graphql", func(c echo.Context) error {
+		graphqlHandler.ServeHTTP(c.Response(), c.Request())
+		return nil
+	})
+
+	playgroundHandler := playground.Handler("GraphQL", "/graphql")
+
+	e.GET("/graphql", func(c echo.Context) error {
+		playgroundHandler.ServeHTTP(c.Response(), c.Request())
+		return nil
+	})
 
 	e.HideBanner = true
 
